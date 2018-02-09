@@ -101,11 +101,7 @@ def LGD(samples, X, y, alpha):
 
 ## investigate the impact of the training data size and the learning rate alpha ###
 
-print(ID_labels1.shape[0])
-print(ID_labels1.shape[1])
-print(subsetOneImages_processed.shape[0])
-print(subsetOneImages_processed.shape[1])
-LGD(10, subsetOneImages_processed, ID_labels1, .001) #10 samples, alpha = .001
+# LGD(10, subsetOneImages_processed, ID_labels1, .001) #10 samples, alpha = .001
 # LGD(10, subsetOneImages_processed, ID_labels1, .01) #10 samples, alpha = .01
 # LGD(10, subsetOneImages_processed, ID_labels1, .1) #10 samples, alpha = .1
 
