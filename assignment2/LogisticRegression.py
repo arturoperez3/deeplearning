@@ -13,7 +13,7 @@ print("hello")
 # the training set is stored in this directory
 path = "/Users/Arturo1/Desktop/Vanderbilt/2017-2018/Spring 2018/Deep Learning 3891/handwriting"
 training_size, test_size = 60000, 10000   
-ID = 6 # last digit of my student ID
+ID = 9 # last digit of my student ID
 
 def relabeling(label):
     for l in label:
@@ -67,7 +67,7 @@ def LGD(samples, X, y, alpha):
     w = np.zeros((X.shape[0], 1))
     b = np.zeros((1, 1))
 
-    for i in range(0,500):
+    for i in range(0,1000):
 
         z = (w.transpose() @ X) + b
         a = 1 / (1 + np.exp(-z))
