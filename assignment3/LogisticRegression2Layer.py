@@ -56,12 +56,6 @@ ID_labels3 = train_labels[200:1200,:]
 subsetFourImages = train_images[:,10000:20000]
 ID_labels4 = train_labels[10000:20000,:]
 
-u = train_labels.shape[0]
-v = train_labels.shape[1]
-
-print(u)
-print(v)
-
 # how do we incorporate a hidden layer? activation function?
 
 ### Logistic Gradient Descent  ###
@@ -80,7 +74,7 @@ def LGD(samples, X, y, alpha, n):
     b = [np.random.rand(n,1), np.random.rand(1,1)] 
     b[0] = b[0] * 0.01
     b[1] = b[1] * 0.01 
-    z = [np.zeros((n,m)), np.zeros((1,m))]
+    z = [np.zeros((n,m)), np.zeros((1,m))]        
     a = [np.zeros((n,m)), np.zeros((1,m))]
     dZ = [np.zeros((n,m)), np.zeros((1,m))]
     dW = [np.zeros((f,n)), np.zeros((n,1))]
@@ -88,7 +82,7 @@ def LGD(samples, X, y, alpha, n):
 
 
 
-    for i in range(0,500):
+    for i in range(0,1):
 
         # forward propopgation 
         z[0] = (w[0] @ X) + b[0]
@@ -107,9 +101,7 @@ def LGD(samples, X, y, alpha, n):
         dZ[1] = a[1] - y
         dW[1] = (1/m) * (dZ[1] @ a[0].transpose())
         dB[1] = (1/m) * np.sum(dZ[1], axis = 1).reshape(dB[1].shape[0], dB[1].shape[1])
-
-
-        dZ[0] = np.multiply((w[1].transpose() @ dZ[1]),(1-(np.tanh(z[0]**2))))
+        dZ[0] = np.multiply((w[1].transpose() @ dZ[1]),(1-(np.tanh(z[0])**2)))
         dW[0] = (1/m) * (dZ[0] @ X.transpose())
         dB[0] = (1/m) * np.sum(dZ[0], axis = 1).reshape(dB[0].shape[0], dB[0].shape[1])
 
