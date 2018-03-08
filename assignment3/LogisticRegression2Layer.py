@@ -14,7 +14,6 @@ print("hello")
 path = "/Users/Arturo1/Desktop/Vanderbilt/2017-2018/Spring 2018/Deep Learning 3891/handwriting"
 training_size, test_size = 60000, 10000   
 ID = 6 # last digit of my student ID
-np.set_printoptions(threshold=np.inf)
 
 def relabeling(label):
     for l in label:

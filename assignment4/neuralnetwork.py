@@ -3,18 +3,22 @@
 # CS 3891 
 # 15 February 2018 
 
-import os
+import os, sys
 import numpy as np
 import struct
+import logging
+from scipy.special import expit
 import matplotlib.pyplot as plt
 from mnist import MNIST
 
-print("hello")
+
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 # the training set is stored in this directory
 path = "/Users/Arturo1/Desktop/Vanderbilt/2017-2018/Spring 2018/Deep Learning 3891/handwriting"
 training_size, test_size = 60000, 10000   
-ID = 6 # last digit of my student ID
-np.set_printoptions(threshold=np.inf)
+ID = 1 # last digit of my student ID
+np.set_printoptions(threshold=5)
+np.seterr(all='ignore')
 
 def relabeling(label):
     for l in label:
@@ -56,107 +60,104 @@ ID_labels3 = train_labels[200:1200,:]
 subsetFourImages = train_images[:,10000:20000]
 ID_labels4 = train_labels[10000:20000,:]
 
+def ReLU (array):
+    return np.maximum(array,0)
+    
+def dReLU(array):
+    return (array >= 0).astype(np.float64)
 
-def LGD(samples, X, y, alpha, n0, n1, n2, n3, n4, n5, l):
+def LGD(samples, X, y, alpha, layer_list):
+    l = len(layer_list)
+    m = X.shape[1]
     costs = []
-    m = X.shape[1] # number of samples
-    f = X.shape[0] # number of features 
-    w = []
-    b = []
-    z = []
-    a = []
-    dZ = []
-    dW = []
-    dB = []
-    n = [n0, n1, n2, n3, n4, n5]
-
+    w  = [0] * (l)
+    b  = [0] * (l)
+    z  = [0] * (l)
+    a  = [0] * (l)
+    dZ = [0] * (l)
+    dW = [0] * (l)
+    dB = [0] * (l)
+    dA = [0] * (l)
+    
     for i in range(1, l):
-        w = w.append(np.random.rand(n[i], n[i-1]))
-        b = b.append(np.random.rand(n[i], 1))
-        z = z.append(np.random.rand(n[i], m))
-        a = a.append(np.random.rand(n[i], m))
-        dZ = dZ.append(np.random.rand(n[i], m))
-        dW = dW.append(np.random.rand(n[i-1], n[i]))
-        dB = dB.append(np.random.rand(n[i], 1))
+        w[i] = np.random.randn(layer_list[i], layer_list[i - 1]) / 10000
+        b[i] = np.random.randn(layer_list[i], 1) / 10000
+        z[i] = np.zeros((layer_list[i], m))
+        a[i] = np.zeros((layer_list[i], m))
+        dZ[i] = np.zeros((layer_list[i], m))
+        dW[i] = np.zeros((layer_list[i], layer_list[i - 1]))
+        dB[i] = np.zeros((layer_list[i], 1))
+        dA[i] = np.zeros((layer_list[i], m))
+    dA[0] = np.zeros((layer_list[0], m))
+    
+    a[0] = X 
 
-
-
-    for i in range(0,500):
-
-        # forward propopgation 
-        z[0] = (w[0] @ X) + b[0]
-
+    for i in range(0, 500):
+        # forward propopgation
         for j in range (1, l):
-            a[j-1] = np.array([a if a > 0 else 0 for a in z[j-1]])
-            z[j] = (w[j] @ a[j-1]) + b[1]
-
-        a[l-1] = 1 / (1 + np.exp(-z[l-1]))
-
-
+            z[j] = (w[j] @ a[j-1]) + b[j]
+            a[j] = ReLU(z[j])
+   
+        a[l-1] = expit(z[l-1])
 
         #compute cost
         cost = 0
-        print(cost)
-        cost = (-1/m) * np.sum(y * np.log(a[l-1]) + (1 - y) * np.log(1 - a[l-1]))
-        print(cost)
+        cost = (np.nan_to_num(
+            -y @ np.log(a[l-1]) - (1 - y) @ np.log(1 - a[l-1]))[0, 0] / m)
         costs.append(cost)
 
         #backward propogation 
-        dZ[l-1] = a[l-1] - y
-
+        dA[-1] = - (y.T @ np.log(a[-1].T) + (1 - y.T) @ np.log(1 - a[-1].T))
         for k in range(l-1, 0, -1):
-            dW[k] = (1/m) * (dZ[k] @ a[k-1].transpose())
-            dB[k] = (1/m) * np.sum(dZ[k], axis = 1).reshape(dB[k].shape[0], dB[k].shape[1])
-            dZ[k-1] = np.multiply((w[k].transpose() @ dZ[k]),(1-(np.tanh(z[k-1])**2)))
-        
-        dW[0] = (1/m) * (dZ[0] @ X.transpose())
-        dB[0] = (1/m) * np.sum(dZ[0], axis = 1).reshape(dB[0].shape[0], dB[0].shape[1])
+            dZ[k] = dA[k] * dReLU(z[k])
+            dW[k] = dZ[k] @ a[k-1].transpose() / m      
+            dB[k] = dZ[k].sum(axis = 1).reshape(dB[k].shape[0], dB[k].shape[1]) / m
+            dA[k - 1] = w[k].T @ dZ[k]
 
         #update parameters 
-        for a in range (l-1, 0, -1):
-            w[a] = w[a] - (alpha * dW[a])
-            b[a] = b[a] - (alpha * dB[a])
-
-        w[0] = w[0] - (alpha * dW[0])
-        b[0] = b[0] - (alpha * dB[0])
-
+        for j in range (1, l):
+            w[j] = w[j] - (alpha * dW[j])
+            b[j] = b[j] - (alpha * dB[j])
     # plot cost function
     plt.plot(costs)
     plt.title("Student ID Cost Function (" + str(samples) + " samples)")
     plt.xlabel("Number of Iterations")
     plt.ylabel("Cost")
     plt.show()
-
     return(w, b)
+ 
+layers = [784, 25, 15, 5, 1]
+w,b = LGD(60000, subsetTwoImages, ID_labels2, .5, layers)
 
-w,b = LGD(60000, train_images, train_labels.transpose(), .5, 20, 10, 5, 1, 0, 0, 4)
+a = test_images
+z = None
 
-l = 4
-n = [20, 10, 5, 0]
-for i in range(1, l):
-    ztest = z.append(np.random.rand(n[i], m))
-    atest = a.append(np.random.rand(n[i], m))
+# forward propopgation 
+for j in range (1, len(layers)):
+    z = w[j] @ a + b[j]
+    a = ReLU(z)
+a = expit(z)
 
-
-    # forward propopgation 
-    ztest[0] = (w[0] @ X) + b[0]
-    for j in range (1, l):
-        atest[j-1] = np.array([a if a > 0 else 0 for a in ztest[j-1]])
-        ztest[j] = (w[j] @ atest[j-1]) + b[1]
-
-    atest[l-1] = 1 / (1 + np.exp(-ztest[l-1]))
-
-zTestLabels = np.array([1 if a > 0.5 else 0 for a in atest[l-1].T])
-
-count = 0
 misclassified = []
+count = 0
+result = np.where(a >= 0.5, 1.0, 0.0)
 for i in range(1,10000):
-    if zTestLabels[i] == test_labels[i]:
+    if result[0, i] == test_labels[i,0]:
         count += 1
     else:
         misclassified.append(i)
 
-accuracy = (count/10000) * 100
+# zTest = np.array([1 if c[0] > 0.5 else 0 for c in a])
+
+# count = 0
+# misclassified = []
+# for i in range(1,10000):
+#     if zTest[0,i] == test_labels[0,i]:
+#         count += 1
+#     else:
+#         misclassified.append(i)
+
+accuracy = (count/test_labels.shape[0]) * 100
 error_rate = 100 - accuracy
 
 print("accuracy for ID = " + str(ID) + " is : " + str(accuracy) + "%")
