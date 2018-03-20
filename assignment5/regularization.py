@@ -21,55 +21,57 @@ train_X, train_Y = load_moons()
 # generate test set
 test_X, test_Y = load_moons()
 
+#   ReLU activation function
 def ReLU (array):
     return np.maximum(0, array)
     
+#   derivative of ReLU activation function
 def dReLU(array):
     array[array < 0] = 0
     array[array > 0] = 1
     return array
 
+#   Sigmoid activation function
 def sigmoid(Z):
     return 1 / (1 + np.exp(-Z))
 
+#   compute the training and the test error
 def checkAccuracy(w, b , X, neuralnetworkType) :
-    # compute the training and the test error
+    # initialize our paramters for use in forward propogation 
     z = [None] * len(w)
     a = [None] * len(w)
 
-    # forward propopgation
+    # forward propopgation 
+    # we use a[-1] (the a from the very last layer) to get our prediction labels
     z[0] = w[0] @ X + b[0]
     for i in range(len(w)-1):
         a[i] = ReLU(z[i])
         z[i+1] = w[i+1] @ a[i] + b[i+1]
     a[-1] = sigmoid(z[-1])
 
-
-    misclassified = []
-    count = 0
+    # get the prediction labels  
     result = np.where(a[-1] >= 0.5, 1.0, 0.0)
-    dim = result.ndim
 
+    # compare our prediction labels to the actual labels (test_Y in this case)
+    dim = result.ndim
+    count = 0
     if (dim == 1) :
         for i in range(1, test_Y.size):
             if result[i] == test_Y[0, i]:
                 count += 1
-            else:
-                misclassified.append(i)
     else :       
         for i in range(1, test_Y.size):
             if result[0, i] == test_Y[0, i]:
                 count += 1
-            else:
-                misclassified.append(i)
 
+    # calculate accuracy and error rates 
     accuracy = (count/test_Y.shape[1]) * 100
     error_rate = 100 - accuracy
 
+    # print results 
     print("accuracy for " + neuralnetworkType + " is : " + str(accuracy) + "%")
     print("error rate for " + neuralnetworkType + " is : " + str(error_rate) + "%")
 
-    return result
 
 def predictPlotLinearRegression (w, b , X) : 
     z = w @ X + b
@@ -375,8 +377,7 @@ def dropoutNeuralNetwork(X, y, alpha, keep_probability, layer_list):
     plt.show()
     return(w, b)
 
-layers = [20, 10]
-w,b = dropoutNeuralNetwork(train_X, train_Y, .5, 0.9, layers)
+w,b = dropoutNeuralNetwork(train_X, train_Y, .5, 0.9, [20, 10])
 neuralType = "Dropout Neural Network"
 checkAccuracy(w, b, test_X, neuralType)
 plot_decision_boundary(lambda x: predictPlotNeuralNetwork(w, b, x.T), train_X, C)
