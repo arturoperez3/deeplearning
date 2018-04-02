@@ -176,8 +176,10 @@ def unregularizedNeuralNetwork(X, y, alpha, layer_list):
     a = [None] * len(w)
     costs = []
 
-    for i in range(0, 500):
+    for i in range(0, 1):
 
+        print(X.shape)
+        print(y.shape)
         # forward propopgation
         z[0] = w[0] @ X + b[0]
         for i in range(len(w)-1):

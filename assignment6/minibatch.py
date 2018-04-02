@@ -6,11 +6,11 @@
 import os, sys
 import numpy as np
 import struct
-import logging
 from scipy.special import expit
 import matplotlib.pyplot as plt
 from mnist import MNIST
 import functools
+from mlxtend.preprocessing import shuffle_arrays_unison
 
 # the training set is stored in this directory
 path = "/Users/Arturo1/Desktop/Vanderbilt/2017-2018/Spring 2018/Deep Learning 3891/handwriting"
@@ -42,20 +42,205 @@ test_labels = np.reshape(test_labels, (test_size, 1))
 relabeling(train_labels)
 relabeling(test_labels)
 
-### creating smaller data sets of differing size and differing data ### 
-# subset1 of 10 samples
-subsetOneImages = train_images[:,:10]
-ID_labels1 = train_labels[:10,:]
+# subset of 10,000 samples
+subsetX = train_images[:,10000:20000]
+subsetY = train_labels[10000:20000,:]
 
-# subset2 of 75 samples
-subsetTwoImages = train_images[:,25:100]
-ID_labels2 = train_labels[25:100,:]
+#   ReLU activation function
+def ReLU (array):
+    return np.maximum(0, array)
+    
+#   derivative of ReLU activation function
+def dReLU(array):
+    array[array < 0] = 0
+    array[array > 0] = 1
+    return array
 
-# subset 3 of 1,000 samples
-subsetThreeImages = train_images[:,200:1200]
-ID_labels3 = train_labels[200:1200,:]
+#   Sigmoid activation function
+def sigmoid(Z):
+    return 1 / (1 + np.exp(-Z))
 
-# subset 4 of 10,000 samples
-subsetFourImages = train_images[:,10000:20000]
-ID_labels4 = train_labels[10000:20000,:]
+#   compute the training and the test error
+def checkAccuracy(w, b , X, Y, neuralnetworkType) :
+    # initialize our paramters for use in forward propogation 
+    z = [None] * len(w)
+    a = [None] * len(w)
 
+    # forward propopgation 
+    # we use a[-1] (the a from the very last layer) to get our prediction labels
+    z[0] = w[0] @ X + b[0]
+    for i in range(len(w)-1):
+        a[i] = ReLU(z[i])
+        z[i+1] = w[i+1] @ a[i] + b[i+1]
+    a[-1] = sigmoid(z[-1])
+
+    # get the prediction labels  
+    result = np.where(a[-1] >= 0.5, 1.0, 0.0)
+
+    # compare our prediction labels to the actual labels (test_Y in this case)
+    dim = result.ndim
+    count = 0
+    if (dim == 1) :
+        for i in range(1, Y.size):
+            if result[i] == Y[0, i]:
+                count += 1
+    else :       
+        for i in range(1, Y.size):
+            if result[0, i] == Y[0, i]:
+                count += 1
+
+    # calculate accuracy and error rates 
+    accuracy = (count/Y.shape[1]) * 100
+    error_rate = 100 - accuracy
+
+    # print results 
+    print("accuracy for " + neuralnetworkType + " is : " + str(accuracy) + "%")
+    print("error rate for " + neuralnetworkType + " is : " + str(error_rate) + "%")
+
+def getNextMiniBatch(X, Y, batchSize) :
+    for i in range(0, X.shape[1], batchSize) :
+        yield (X[: , i:i + batchSize] , Y[:, i:i + batchSize ])
+
+def minibatchNeuralNetwork(p, q, alpha, batchSize, layer_list):
+    f, m = p.shape
+    
+    # initialize weights, biases and parameters 
+    w = functools.reduce(lambda acc, neurons: (acc[0] + [np.random.randn(neurons, 
+    acc[1]) * np.sqrt(2.0/acc[1])], neurons), layer_list, ([], f))[0]
+    b = [ np.random.randn(neurons, 1) * 0.01 for neurons in layer_list ]
+    z = [None] * len(w)
+    a = [None] * len(w)
+    costs = []
+
+    for i in range(0, 200):
+        # api function used to shuffle 2 numpy arrays in unison
+        p, q = shuffle_arrays_unison(arrays=[p.T, q.T], random_seed=3)
+        p = p.T
+        q = q.T
+
+        # for each minibatch: forward prop, compute cost, backward prop, update parameters
+        for X, Y in getNextMiniBatch(p, q, batchSize) :
+            # forward propopgation
+            z[0] = w[0] @ X + b[0]
+            for i in range(len(w)-1):
+                a[i] = ReLU(z[i])
+                z[i+1] = w[i+1] @ a[i] + b[i+1]
+            a[-1] = sigmoid(z[-1])
+
+            # compute cost
+            cost = - (Y @ np.log(a[-1].T) + (1 - Y) @ np.log(1 - a[-1].T))[0,0] / m
+            costs.append(cost)
+
+            dZ = a[-1] - Y
+            gradients = [] 
+            # backward propogation 
+            for k in range(len(z)-2, -1, -1):
+                # Calculate dW and DB
+                gradients.append([ (dZ @ a[k].T) / m, 
+                    np.sum(dZ, axis=1).reshape(b[k+1].shape) / m ])
+            
+                dZ = (w[k+1].T @ dZ) * dReLU(z[k])
+
+            # Calculate dW and dB for the first layer
+            gradients.append([ (dZ @ X.T) / m, 
+                np.sum(dZ, axis=1).reshape(b[0].shape) / m ])
+
+            # flip gradients so order is from first to last layer
+            gradients = gradients[::-1]
+
+            # update parameters 
+            for j in range(len(gradients)):
+                w[j] = w[j] - (alpha * gradients[j][0])
+                b[j] = b[j] - (alpha * gradients[j][1])
+            
+    # plot cost function
+    plt.clf()
+    plt.plot(costs)
+    plt.title("MiniBatch Neural Network Cost Function (" + str(m) + " samples)")
+    plt.xlabel("Number of Iterations")
+    plt.ylabel("Cost")
+    plt.show()
+    return(w, b)
+ 
+# layers = [20, 10]
+# w,b = minibatchNeuralNetwork(subsetX, subsetY.T, .1, 100, layers)
+# neuralType = "Minibatch Neural Network"
+# checkAccuracy(w, b, subsetX, subsetY.T, neuralType)
+
+def minibatchWithMomentum(p, q, epsilon, alpha, batchSize, layer_list):
+    f, m = p.shape
+    
+    # initialize weights, biases and parameters 
+    w = functools.reduce(lambda acc, neurons: (acc[0] + [np.random.randn(neurons, 
+    acc[1]) * np.sqrt(2.0/acc[1])], neurons), layer_list, ([], f))[0]
+    b = [ np.random.randn(neurons, 1) * 0.01 for neurons in layer_list ]
+    Vb = [ np.zeros((neurons, 1)) for neurons in layer_list ]
+    z = [None] * len(w)
+    a = [None] * len(w)
+    costs = []
+
+    newLayerList = [f]
+    for i in range (0, len(layer_list)) :
+        newLayerList.append(layer_list[i])
+    newLayerList.append(1)
+
+    Vw = [0] * len(newLayerList)
+    for i in range (1, len(newLayerList)) :
+        Vw[i-1] = np.zeros((newLayerList[i], newLayerList[i-1]))
+
+    for i in range(0, 200):
+        # api function used to shuffle 2 numpy arrays in unison
+        p, q = shuffle_arrays_unison(arrays=[p.T, q.T], random_seed=3)
+        p = p.T
+        q = q.T
+
+        # for each minibatch: forward prop, compute cost, backward prop, update parameters
+        for X, Y in getNextMiniBatch(p, q, batchSize) :
+            # forward propopgation
+            z[0] = w[0] @ X + b[0]
+            for i in range(len(w)-1):
+                a[i] = ReLU(z[i])
+                z[i+1] = w[i+1] @ a[i] + b[i+1]
+            a[-1] = sigmoid(z[-1])
+
+            # compute cost
+            cost = - (Y @ np.log(a[-1].T) + (1 - Y) @ np.log(1 - a[-1].T))[0,0] / m
+            costs.append(cost)
+
+            dZ = a[-1] - Y
+            gradients = [] 
+            # backward propogation 
+            for k in range(len(z)-2, -1, -1):
+                # Calculate dW and DB
+                gradients.append([ (dZ @ a[k].T) / m, 
+                    np.sum(dZ, axis=1).reshape(b[k+1].shape) / m ])
+            
+                dZ = (w[k+1].T @ dZ) * dReLU(z[k])
+
+            # Calculate dW and dB for the first layer
+            gradients.append([ (dZ @ X.T) / m, 
+                np.sum(dZ, axis=1).reshape(b[0].shape) / m ])
+
+            # flip gradients so order is from first to last layer
+            gradients = gradients[::-1]
+
+            # update parameters 
+            for j in range(len(gradients)):
+                Vw[j] = alpha*Vw[j] - epsilon*gradients[j][0]
+                Vb[j] = alpha*Vb[j] - epsilon*gradients[j][1]
+                w[j] = w[j] + Vw[j]
+                b[j] = b[j] + Vb[j]
+            
+    # plot cost function
+    plt.clf()
+    plt.plot(costs)
+    plt.title("MiniBatch with Momentum Cost Function (" + str(m) + " samples)")
+    plt.xlabel("Number of Iterations")
+    plt.ylabel("Cost")
+    plt.show()
+    return(w, b)
+ 
+layers = [20, 10]
+w,b = minibatchWithMomentum(subsetX, subsetY.T, .5, .1, 1000, layers)
+neuralType = "Minibatch Neural Network with Momentum"
+checkAccuracy(w, b, subsetX, subsetY.T, neuralType)
