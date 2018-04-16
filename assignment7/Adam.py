@@ -118,12 +118,13 @@ def minibatchNeuralNetwork(p, q, p1, p2, alpha, batchSize, layer_list):
     for i in range (0, len(layer_list)) :
         newLayerList.append(layer_list[i])
 
-    Wa = []
+    Wa0 = []
+    Wa1 = []
     for i in range (1, len(newLayerList)) :
-        Wa.append([np.zeros((newLayerList[i], newLayerList[i-1])), 
-        np.zeros((newLayerList[i], newLayerList[i-1]))])
+        Wa0.append(np.random.randn(newLayerList[i], newLayerList[i-1]))
+        Wa1.append(np.random.randn(newLayerList[i], newLayerList[i-1]))
 
-    for i in range(0, 1):
+    for i in range(0, 100):
         # api function used to shuffle 2 numpy arrays in unison
         p, q = shuffle_arrays_unison(arrays=[p.T, q.T], random_seed=3)
         p = p.T
@@ -140,7 +141,7 @@ def minibatchNeuralNetwork(p, q, p1, p2, alpha, batchSize, layer_list):
 
             # compute cost
             print(0)
-            cost = - (Y @ np.log(a[-1].T) + (1 - Y) @ np.log(1 - a[-1].T))[0,0] / m
+            cost = np.nan_to_num(- (Y @ np.log(a[-1].T) + (1 - Y) @ np.log(1 - a[-1].T))[0,0] / m)
             print(cost)
             costs.append(cost)
 
@@ -166,16 +167,21 @@ def minibatchNeuralNetwork(p, q, p1, p2, alpha, batchSize, layer_list):
             # [0] = s
             # [1] = r
             for j in range(len(gradients)):
-                Wa[j][0] = Wa[j][0] * p1 + (1-p1) * gradients[j][0]
-                Wa[j][1] = np.multiply(p2, Wa[j][1]) + np.multiply((1-p2), (np.multiply(gradients[j][0], gradients[j][0])))
-                Wa[j][0] = Wa[j][0] / (1-p1)
-                Wa[j][1] = Wa[j][1] / (1-p2)
-                Ba0[j] = np.multiply(p1, Ba0[j]) + np.multiply((1-p1), gradients[j][1])
-                Ba1[j] = np.multiply(p2, Ba1[j]) + np.multiply((1-p2), (np.multiply(gradients[j][1], gradients[j][1])))
-                Ba0[j] = Ba0[j] / (1-p1)
-                Ba1[j] = Ba1[j] / (1-p2)
-                w[j] = w[j] - (alpha*(np.true_divide(Wa[j][0], np.sqrt(Wa[j][1]))))
-                b[j] = b[j] - (alpha*(np.true_divide(Ba0[j], np.sqrt(Ba1[j]))))
+                Wa0[j] = ((p1 * Wa0[j]) + ((1-p1) * gradients[j][0])) / (1-p1**i)
+                Wa1[j] = ((p2 * Wa1[j]) + ((1-p2) * gradients[j][0]*gradients[j][0])) / (1-p2**i)
+                Ba0[j] = ((p1 * Ba0[j]) + ((1-p1) * gradients[j][1])) / (1-p1**i)
+                Ba1[j] = ((p2 * Ba1[j]) + ((1-p2) * gradients[j][1]*gradients[j][1])) / (1-p2**i)
+
+                w[j] = w[j] - alpha*(Wa0[j] / (Wa1[j]**(1/2) + .000001))
+                b[j] = b[j] - alpha*(Ba0[j] / (Ba1[j]**(1/2) + .000001))
+
+                
+                
+                
+                # Wa0[j] = alpha*Wa0[j] - p1*gradients[j][0]
+                # Ba0[j] = alpha*Ba0[j] - p1*gradients[j][1]
+                # w[j] = w[j] + Wa0[j]
+                # b[j] = b[j] + Ba0[j]
             
     # plot cost function
     plt.clf()
@@ -187,6 +193,6 @@ def minibatchNeuralNetwork(p, q, p1, p2, alpha, batchSize, layer_list):
     return(w, b)
  
 layers = [20, 10]
-w,b = minibatchNeuralNetwork(subsetX, subsetY.T, .9, .9, .1, 100, layers)
+w,b = minibatchNeuralNetwork(subsetX, subsetY.T, .9, .9, .001, 10000, layers)
 neuralType = "Adam Neural Network"
 checkAccuracy(w, b, subsetX, subsetY.T, neuralType)
