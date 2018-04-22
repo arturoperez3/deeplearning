@@ -2,6 +2,7 @@ import tensorflow as tf
 import os
 import struct
 import numpy as np
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 # Training Parameters
 learning_rate = 0.001
@@ -18,7 +19,7 @@ def data_input():
     # Import data
     path = os.getcwd()
     # Train data
-    filePath = '/Users/koutsoxd/Examples/SoftwareAssignments/MNIST/'   # the training set is stored in this directory
+    filePath = '/Users/Arturo1/Desktop/Vanderbilt/2017-2018/Spring 2018/Deep Learning 3891/handwriting'   # the training set is stored in this directory
     fname_train_images = os.path.join(filePath, 'train-images-idx3-ubyte')  # the training set image file path
     fname_train_labels = os.path.join(filePath, 'train-labels-idx1-ubyte')  # the training set label file path
 
@@ -130,10 +131,13 @@ def model_fn(features, labels, mode):
     return estim_specs
 
 # Build the Estimator
+print("start program")
 model = tf.estimator.Estimator(model_fn)
 
+print("get the data")
 train_images,train_labels,test_images,test_labels=data_input()
 
+print("Before training")
 # Define the input function for training
 input_fn = tf.estimator.inputs.numpy_input_fn(
     x={'images': train_images}, y=train_labels,
@@ -141,6 +145,7 @@ input_fn = tf.estimator.inputs.numpy_input_fn(
 # Train the Model
 model.train(input_fn, steps=None)
 
+print("Before Testing")
 # Evaluate the Model
 # Define the input function for evaluating
 input_fn = tf.estimator.inputs.numpy_input_fn(

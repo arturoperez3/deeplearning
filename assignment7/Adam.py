@@ -163,9 +163,6 @@ def minibatchNeuralNetwork(p, q, p1, p2, alpha, batchSize, layer_list):
             gradients = gradients[::-1]
 
 
-            # update parameters 
-            # [0] = s
-            # [1] = r
             for j in range(len(gradients)):
                 Wa0[j] = ((p1 * Wa0[j]) + ((1-p1) * gradients[j][0])) / (1-p1**i)
                 Wa1[j] = ((p2 * Wa1[j]) + ((1-p2) * gradients[j][0]*gradients[j][0])) / (1-p2**i)
